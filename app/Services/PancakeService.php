@@ -26,18 +26,19 @@ class PancakeService
     public function updateInventory($id, $available)
     {
         $item = PancakeItemMap::where('n_id', $id)->first();
-        if ($item && $item->inventory== $available) {
+        if ($item && $item->inventory == $available) {
             return;
         }
         $item = $this->getProduct($id);
-        $res = $this->createInventory($item->p_id, $available,$item->inventory);
+        $res = $this->createInventory($item->p_id, $available, $item->inventory);
         if (property_exists($res, 'data')) {
             $this->changeStatusInventory($res->data->id);
-            $item->inventory= $available;
+            $item->inventory = $available;
             $item->save();
         }
     }
-    public function createInventory(string $id, int $available,int $current)
+
+    public function createInventory(string $id, int $available, int $current)
     {
         $url = "https://pos.pages.fm/api/v1/shops/268808/stocktakings?access_token=" . self::TOKEN;
         $data = "{
@@ -46,7 +47,7 @@ class PancakeService
                     \"items\": [
                       {
                         \"variation_id\": \"" . $id . "\",
-                        \"changed_quantity\": " . ($current - $available). ",
+                        \"changed_quantity\": " . ($available - $current) . ",
                         \"current_quantity\": " . $current . ",
                         \"quantity\": " . $available . "
                       }
@@ -55,23 +56,25 @@ class PancakeService
                     \"shop_id\": \"268808\",
                     \"status\": 0,
                     \"is_batch_shelf\": false,
-                    \"stocktaking_at\": \"".Carbon::now()."\"
+                    \"stocktaking_at\": \"" . Carbon::now() . "\"
                   }
                 }";
         $response = Api::post($url, array('Content-Type' => 'application/json'), $data);
         return $response->body;
     }
+
     public function changeStatusInventory($id)
     {
-        $url = "https://pos.pages.fm/api/v1/shops/268808/stocktakings/".$id."?access_token=" . self::TOKEN;
+        $url = "https://pos.pages.fm/api/v1/shops/268808/stocktakings/" . $id . "?access_token=" . self::TOKEN;
         $response = Api::get($url)->body;
         if (property_exists($response, 'data')) {
-            $response->data->status=1;
+            $response->data->status = 1;
             $headers = array('Content-Type' => 'application/json');
-            $stocktaking=json_encode($response->data);
-           $resp= Api::put($url,$headers,"{\"stocktaking\": ".$stocktaking."}");
+            $stocktaking = json_encode($response->data);
+            $resp = Api::put($url, $headers, "{\"stocktaking\": " . $stocktaking . "}");
         }
     }
+
     private function getProduct($id): PancakeItemMap
     {
         $item = PancakeItemMap::where('n_id', $id)->first();
@@ -113,7 +116,6 @@ class PancakeService
                     }
                 }
                 if ((int)$key == $id) {
-                   $headers = array('Accept' => '*/*');
                     $data = array(
                         "params[data][product][new_product_id]" => $value->code,
                         "params[data][product][product_name]" => $value->name,
@@ -122,22 +124,52 @@ class PancakeService
                         "params[data][variations][0][weight]" => "300",
                         "params[data][variations][0][retail_price]" => $value->price,
                         "params[data][variations][0][remain_quantity]" => $quantity,
+                        "params[data][variations][0][images][0]" => "",
                         "params[is_kiotviet]" => "false",
                         "params[is_auto_gen]" => "true",
                         "params[is_custom_gen]" => "false"
                     );
 
-                    $body = Api\Body::multipart($data);
-                    $url ='https://pos.pages.fm/api/v1/shops/268808/products/import?access_token=' . self::TOKEN;
-                    $res = Api::post($url, $headers, $body);
-                    $res=$res->body;
+                    $this->createProductApi($data);
 
                     PancakeItemMap::create(['n_id' => $value->idNhanh, 'n_parent_code' => "", 'n_parent_name' => "", 'code' => $value->code, 'name' => $value->name, 'price' => $value->price, 'inventory' => $quantity, 'p_id', 'push' => 1]);
-                    if (property_exists($res, 'data')) {
-                        return;
-                    }
                 }
             }
         }
+    }
+
+
+    public function procedureCreateProduct($speed)
+    {
+
+        $size = substr($speed["code"], -1);
+        if ($size != "S" && $size != "M" && $size != "L") {
+            $size = "";
+        } else {
+            $size = "size:" . $size;
+        }
+        $data = array(
+            "params[data][product][new_product_id]" => $speed["code"],
+            "params[data][product][product_name]" => $speed["name"],
+            "params[data][variations][0][warehouse_id]" => "64c185f4-a7c3-417d-a514-38b624f4a0f2",
+            "params[data][variations][0][fields]" => $size,
+            "params[data][variations][0][weight]" => "300",
+            "params[data][variations][0][retail_price]" => $speed["price"],
+            "params[data][variations][0][remain_quantity]" => 0,
+            "params[data][variations][0][images][0]" => $speed["image"],
+            "params[is_kiotviet]" => "false",
+            "params[is_auto_gen]" => "true",
+            "params[is_custom_gen]" => "false"
+        );
+
+        $this->createProductApi($data);
+
+        PancakeItemMap::create(['n_id' => $speed["productId"], 'n_parent_code' => "", 'n_parent_name' => "", 'code' => $speed["code"], 'name' => $speed["name"], 'price' => $speed["price"], 'inventory' => 0, 'p_id', 'push' => 1]);
+    }
+    public function createProductApi($data){
+        $headers = array('Accept' => '*/*');
+        $body = Api\Body::multipart($data);
+        $url = 'https://pos.pages.fm/api/v1/shops/268808/products/import?access_token=' . self::TOKEN;
+        Api::post($url, $headers, $body);
     }
 }

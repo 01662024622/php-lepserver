@@ -30,21 +30,21 @@ class WebhookController extends Controller
     {
         $this->ErpService=ERPService::getInstance();
         $this->SpeedService=SpeedService::getInstance();
-        $nhanh = $request->only(["event", "webhooksVerifyToken", "data"]);
-        if ($nhanh["webhooksVerifyToken"] != "Thangui0011@@1996") return response('error', 404);
+        $speed = $request->only(["event", "webhooksVerifyToken", "data"]);
+        if ($speed["webhooksVerifyToken"] != "Thangui0011@@1996") return response('error', 404);
 
-        Webhook::create(['data' => json_encode($nhanh)]);
-        if ($nhanh["event"] == "productAdd") {
-            return $this->procedureProduct($nhanh);
+        Webhook::create(['data' => json_encode($speed)]);
+        if ($speed["event"] == "productAdd") {
+            return $this->procedureProduct($speed);
         }
 
-        if ($nhanh["event"] == "orderAdd" ||$nhanh["event"] == "orderUpdate") {
+        if ($speed["event"] == "orderAdd" ||$speed["event"] == "orderUpdate") {
             return $this->procedurePoint();
         }
-        if ($nhanh["event"] != "inventoryChange") {
+        if ($speed["event"] != "inventoryChange") {
             return response("true", 200);
         }
-        return $this->procedureInventory($nhanh);
+        return $this->procedureInventory($speed);
     }
     private function procedurePoint(){
         $res = $this->SpeedService->getCustomersPoint();
@@ -84,11 +84,12 @@ class WebhookController extends Controller
     }
 
 
-    private function procedureProduct($nhanh){
-
-        if($nhanh["data"]["parentId"]!= null)
+    private function procedureProduct($speed){
+        if($speed["data"]["parentId"]!= null)
             return response('true', 200);
-        $product = Product::create(["code"=>$nhanh["data"]["code"],"name"=>$nhanh["data"]["name"]]);
+        $PancakeService = PancakeService::getInstance();
+        $PancakeService->procedureCreateProduct($speed["data"]);
+        $product = Product::create(["code"=>$speed["data"]["code"],"name"=>$speed["data"]["name"]]);
         $product->slug=$product->code;
         $product->sku=$product->code;
         $product->type="item";
@@ -97,11 +98,11 @@ class WebhookController extends Controller
         $product->units=[];
         $product->parts=[];
         $product->unit=null;
-        $product->price=$nhanh["data"]["price"];
-        $product->normal_price=$nhanh["data"]["price"];
+        $product->price=$speed["data"]["price"];
+        $product->normal_price=$speed["data"]["price"];
         $product->original_price=0;
-        if(array_key_exists("image",$nhanh["data"])){
-            $info = pathinfo($nhanh["data"]["image"]);
+        if(array_key_exists("image",$speed["data"])){
+            $info = pathinfo($speed["data"]["image"]);
             $curl = curl_init();
             curl_setopt_array($curl, array(
                 CURLOPT_URL => 'https://api.lep.vn/v1/images/upload-single?group=products',
@@ -112,7 +113,7 @@ class WebhookController extends Controller
                 CURLOPT_FOLLOWLOCATION => false,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                 CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => array('file'=> curl_file_create($nhanh["data"]["image"],'image/jpeg',$info['basename'])),
+                CURLOPT_POSTFIELDS => array('file'=> curl_file_create($speed["data"]["image"],'image/jpeg',$info['basename'])),
                 CURLOPT_HTTPHEADER => array(
                     'Authorization: Bearer '.$this->ErpService->getToken()
                 ),
@@ -126,7 +127,7 @@ class WebhookController extends Controller
         }
 
 
-        $res = $this->SpeedService->getSubProducts($nhanh["data"]["productId"]);
+        $res = $this->SpeedService->getSubProducts($speed["data"]["productId"]);
         if (!property_exists($res, 'data')) {
             $product->products=[];
             $resProduct = $this->ErpService->createProduct($product);
@@ -195,10 +196,10 @@ class WebhookController extends Controller
 
 
 
-    private function procedureInventory($nhanh){
+    private function procedureInventory($speed){
         $stocks = Center::where('nhanhId', '>', 0)->where('active',1)->get();
         $stockNhanhs = Center::where('nhanhId', '>', 0)->where('active',1)->get()->pluck('nhanhId')->toArray();
-        foreach ($nhanh["data"] as $item) {
+        foreach ($speed["data"] as $item) {
             $this->procedureInventoryErp($item,$stockNhanhs,$stocks);
             foreach ($item["depots"] as $key => $value) {
                 if ((int)$key==133563) {
