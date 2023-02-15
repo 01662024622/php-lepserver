@@ -85,10 +85,10 @@ class WebhookController extends Controller
 
 
     private function procedureProduct($speed){
-        if($speed["data"]["parentId"]!= null)
-            return response('true', 200);
         $PancakeService = PancakeService::getInstance();
         $PancakeService->procedureCreateProduct($speed["data"]);
+        if($speed["data"]["parentId"]!= null)
+            return response('true', 200);
         $product = Product::create(["code"=>$speed["data"]["code"],"name"=>$speed["data"]["name"]]);
         $product->slug=$product->code;
         $product->sku=$product->code;

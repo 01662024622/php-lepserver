@@ -156,20 +156,26 @@ class PancakeService
             "params[data][variations][0][weight]" => "300",
             "params[data][variations][0][retail_price]" => $speed["price"],
             "params[data][variations][0][remain_quantity]" => 0,
-            "params[data][variations][0][images][0]" => $speed["image"],
             "params[is_kiotviet]" => "false",
             "params[is_auto_gen]" => "true",
             "params[is_custom_gen]" => "false"
         );
+        if($speed["image"]!=null){
+            $data["params[data][variations][0][images][0]"]=$speed["image"];
+        }
 
         $this->createProductApi($data);
 
-        PancakeItemMap::create(['n_id' => $speed["productId"], 'n_parent_code' => "", 'n_parent_name' => "", 'code' => $speed["code"], 'name' => $speed["name"], 'price' => $speed["price"], 'inventory' => 0, 'p_id', 'push' => 1]);
+        $res = PancakeItemMap::create(['n_id' => $speed["productId"], 'n_parent_code' => "", 'n_parent_name' => "", 'code' => $speed["code"], 'name' => $speed["name"], 'price' => $speed["price"], 'inventory' => 0, 'p_id', 'push' => 1]);
+        return $res;
     }
-    public function createProductApi($data){
+
+    public function createProductApi($data)
+    {
         $headers = array('Accept' => '*/*');
         $body = Api\Body::multipart($data);
         $url = 'https://pos.pages.fm/api/v1/shops/268808/products/import?access_token=' . self::TOKEN;
-        Api::post($url, $headers, $body);
+        $res = Api::post($url, $headers, $body);
+        return $res;
     }
 }
