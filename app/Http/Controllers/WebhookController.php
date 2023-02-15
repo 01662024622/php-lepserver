@@ -35,7 +35,7 @@ class WebhookController extends Controller
 
         Webhook::create(['data' => json_encode($speed)]);
         if ($speed["event"] == "productAdd") {
-            return $this->procedureProduct($speed);
+            return $this->procedureProductERP($speed);
         }
 
         if ($speed["event"] == "orderAdd" ||$speed["event"] == "orderUpdate") {
@@ -84,9 +84,7 @@ class WebhookController extends Controller
     }
 
 
-    private function procedureProduct($speed){
-        $PancakeService = PancakeService::getInstance();
-        $PancakeService->procedureCreateProduct($speed["data"]);
+    private function procedureProductERP($speed){
         if($speed["data"]["parentId"]!= null)
             return response('true', 200);
         $product = Product::create(["code"=>$speed["data"]["code"],"name"=>$speed["data"]["name"]]);
@@ -102,6 +100,7 @@ class WebhookController extends Controller
         $product->normal_price=$speed["data"]["price"];
         $product->original_price=0;
         if(array_key_exists("image",$speed["data"])){
+            $speed["data"]["image"]=str_replace("https://bucket.nhanh.vn/store/16294/","https://traffic-edge27.cdn.vncdn.io/cdn-pos/bb1d54-16294/",$speed["data"]["image"]);
             $info = pathinfo($speed["data"]["image"]);
             $curl = curl_init();
             curl_setopt_array($curl, array(
@@ -123,11 +122,11 @@ class WebhookController extends Controller
             if (!property_exists($response, 'url')) return response("true", 200);
             $product->thumbnail_url =$response->url;
             curl_close($curl);
-
         }
 
 
         $res = $this->SpeedService->getSubProducts($speed["data"]["productId"]);
+        $this->procedureProductPanCake($speed,$res);
         if (!property_exists($res, 'data')) {
             $product->products=[];
             $resProduct = $this->ErpService->createProduct($product);
@@ -140,7 +139,6 @@ class WebhookController extends Controller
         $subProducts=[];
         $index=0;
         foreach ($res->data->products as $value) {
-
             $sub =array(
                 "indexes"=>[$index],
                 "options"=> ["\"".trim(str_replace("-","",str_replace($product->code,"",$value->code)))."\""],
@@ -191,6 +189,23 @@ class WebhookController extends Controller
             }
         }
         return response("true", 200);
+    }
+    private function procedureProductPanCake($speed, $subProduct): void
+    {
+        $PancakeService = PancakeService::getInstance();
+        if($speed["data"]["parentId"]!= null) {
+            response('true', 200);
+            return;
+        }
+        $image="";
+        if(array_key_exists("image",$speed["data"])){
+            if($speed["data"]["image"]!=null)
+                $image = $speed["data"]["image"];
+        }
+        foreach ($subProduct->data->products as $value) {
+            $PancakeService->procedureCreateProduct($value,$image);
+        }
+
     }
 
 

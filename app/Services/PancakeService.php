@@ -124,7 +124,6 @@ class PancakeService
                         "params[data][variations][0][weight]" => "300",
                         "params[data][variations][0][retail_price]" => $value->price,
                         "params[data][variations][0][remain_quantity]" => $quantity,
-                        "params[data][variations][0][images][0]" => "",
                         "params[is_kiotviet]" => "false",
                         "params[is_auto_gen]" => "true",
                         "params[is_custom_gen]" => "false"
@@ -139,35 +138,34 @@ class PancakeService
     }
 
 
-    public function procedureCreateProduct($speed)
+    public function procedureCreateProduct($speed,$image)
     {
 
-        $size = substr($speed["code"], -1);
+        $size = substr($speed->code, -1);
         if ($size != "S" && $size != "M" && $size != "L") {
             $size = "";
         } else {
             $size = "size:" . $size;
         }
         $data = array(
-            "params[data][product][new_product_id]" => $speed["code"],
-            "params[data][product][product_name]" => $speed["name"],
+            "params[data][product][new_product_id]" => $speed->code,
+            "params[data][product][product_name]" => $speed->name,
             "params[data][variations][0][warehouse_id]" => "64c185f4-a7c3-417d-a514-38b624f4a0f2",
             "params[data][variations][0][fields]" => $size,
             "params[data][variations][0][weight]" => "300",
-            "params[data][variations][0][retail_price]" => $speed["price"],
+            "params[data][variations][0][retail_price]" => $speed->price,
             "params[data][variations][0][remain_quantity]" => 0,
             "params[is_kiotviet]" => "false",
             "params[is_auto_gen]" => "true",
-            "params[is_custom_gen]" => "false"
-        );
-        if($speed["image"]!=null){
-            $data["params[data][variations][0][images][0]"]=$speed["image"];
-        }
+            "params[is_custom_gen]" => "false",
 
+        );
+        if($image!="")
+            $data["params[data][variations][0][images][0]"]=$image;
         $this->createProductApi($data);
 
-        $res = PancakeItemMap::create(['n_id' => $speed["productId"], 'n_parent_code' => "", 'n_parent_name' => "", 'code' => $speed["code"], 'name' => $speed["name"], 'price' => $speed["price"], 'inventory' => 0, 'p_id', 'push' => 1]);
-        return $res;
+        PancakeItemMap::create(['n_id' => $speed->idNhanh, 'n_parent_code' => "", 'n_parent_name' => "", 'code' => $speed->code, 'name' => $speed->name, 'price' => $speed->price, 'inventory' => 0, 'p_id', 'push' => 1]);
+
     }
 
     public function createProductApi($data)
