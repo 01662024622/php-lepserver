@@ -95,7 +95,7 @@ class PancakeService
         return $this->createProduct($id);
     }
 
-    private function createProduct($id)
+    private function createProduct($id) : PancakeItemMap
     {
         $service = SpeedService::getInstance();
         $res = $service->getProductDetail($id);
