@@ -10,6 +10,7 @@ use App\Services\PancakeService;
 use App\Services\SpeedService;
 use App\Webhook;
 use Illuminate\Http\Request;
+use PHPUnit\Exception;
 use Unirest\Request as Api;
 use Unirest\Request\Body;
 
@@ -99,6 +100,7 @@ class WebhookController extends Controller
         $product->price=$speed["data"]["price"];
         $product->normal_price=$speed["data"]["price"];
         $product->original_price=0;
+        try{
         if(array_key_exists("image",$speed["data"])){
             $speed["data"]["image"]=str_replace("https://bucket.nhanh.vn/store/16294/","https://traffic-edge27.cdn.vncdn.io/cdn-pos/bb1d54-16294/",$speed["data"]["image"]);
             $info = pathinfo($speed["data"]["image"]);
@@ -122,7 +124,7 @@ class WebhookController extends Controller
             if (!property_exists($response, 'url')) return response("true", 200);
             $product->thumbnail_url =$response->url;
             curl_close($curl);
-        }
+        }}catch (Exception $e){}
 
 
         $res = $this->SpeedService->getSubProducts($speed["data"]["productId"]);

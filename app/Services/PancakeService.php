@@ -71,7 +71,7 @@ class PancakeService
             $response->data->status = 1;
             $headers = array('Content-Type' => 'application/json');
             $stocktaking = json_encode($response->data);
-            $resp = Api::put($url, $headers, "{\"stocktaking\": " . $stocktaking . "}");
+            Api::put($url, $headers, "{\"stocktaking\": " . $stocktaking . "}");
         }
     }
 
@@ -92,8 +92,7 @@ class PancakeService
                 return $item;
             }
         }
-        $this->createProduct($id);
-        return $this->getProduct($id);
+        return $this->createProduct($id);
     }
 
     private function createProduct($id)
@@ -135,6 +134,8 @@ class PancakeService
                 }
             }
         }
+
+        return $this->getProduct($id);
     }
 
 
